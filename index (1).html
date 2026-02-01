@@ -1,0 +1,1354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Habit Tracker - Dashboard</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Lato', sans-serif;
+            background: #f5f5f0;
+            color: #333;
+            padding: 10px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            position: relative;
+        }
+        
+        /* Top Controls Bar */
+        .top-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e0e0e0;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .app-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: #333;
+        }
+        
+        .control-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: 'Lato', sans-serif;
+            white-space: nowrap;
+        }
+        
+        .btn-primary {
+            background: #a8d5a1;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #95c288;
+        }
+        
+        .btn-secondary {
+            background: white;
+            color: #666;
+            border: 1px solid #ddd;
+        }
+        
+        .btn-secondary:hover {
+            background: #f5f5f5;
+        }
+        
+        .btn-danger {
+            background: #ff6b6b;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #ee5a5a;
+        }
+        
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 20px;
+        }
+        
+        .modal {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            max-width: 500px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        .modal-header {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: #333;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-label {
+            display: block;
+            font-size: 13px;
+            font-weight: 700;
+            color: #666;
+            margin-bottom: 8px;
+        }
+        
+        .form-input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: 'Lato', sans-serif;
+        }
+        
+        .form-input:focus {
+            outline: none;
+            border-color: #a8d5a1;
+        }
+        
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 25px;
+            flex-wrap: wrap;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+            align-items: start;
+        }
+        
+        .grid-2col {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+        
+        .bottom-compact-left,
+        .bottom-compact-right {
+            max-width: 100%;
+        }
+        
+        .calendar-section,
+        .habits-section,
+        .stats-section {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+        }
+        
+        .section-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        /* Calendar */
+        .calendar {
+            margin: 0 auto;
+        }
+        
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding: 0 10px;
+        }
+        
+        .month-name {
+            font-size: 16px;
+            font-weight: 700;
+            color: #333;
+        }
+        
+        .calendar-nav {
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            color: #666;
+            padding: 5px 10px;
+        }
+        
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 4px;
+        }
+        
+        .calendar-day-header {
+            text-align: center;
+            font-size: 11px;
+            font-weight: 700;
+            color: #999;
+            padding: 8px 2px;
+        }
+        
+        .calendar-day {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+        
+        .calendar-day.empty {
+            cursor: default;
+        }
+        
+        .calendar-day.selected {
+            background: #a8d5a1;
+            color: white;
+            font-weight: 700;
+        }
+        
+        .calendar-day:not(.empty):not(.selected):hover {
+            background: #f0f0f0;
+        }
+        
+        .habit-dot {
+            position: absolute;
+            bottom: 2px;
+            width: 4px;
+            height: 4px;
+            background: #a8d5a1;
+            border-radius: 50%;
+        }
+        
+        /* Habits List */
+        .habits-list {
+            list-style: none;
+        }
+        
+        .habit-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px;
+            margin-bottom: 8px;
+            background: #f9f9f9;
+            border-radius: 6px;
+            transition: all 0.2s;
+            gap: 10px;
+        }
+        
+        .habit-item:hover {
+            background: #f0f0f0;
+        }
+        
+        .habit-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .habit-checkbox {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+        
+        .habit-checkbox.checked {
+            background: #a8d5a1;
+            border-color: #a8d5a1;
+        }
+        
+        .habit-name {
+            font-size: 14px;
+            color: #333;
+            word-break: break-word;
+        }
+        
+        .habit-actions {
+            display: flex;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+        
+        .habit-delete {
+            background: #ff6b6b;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 6px 10px;
+            font-size: 12px;
+            cursor: pointer;
+            font-weight: 700;
+        }
+        
+        .add-habit-btn {
+            width: 100%;
+            padding: 12px;
+            background: white;
+            border: 2px dashed #ddd;
+            border-radius: 6px;
+            color: #666;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: 'Lato', sans-serif;
+        }
+        
+        .add-habit-btn:hover {
+            border-color: #a8d5a1;
+            color: #a8d5a1;
+        }
+        
+        /* Stats */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 15px;
+        }
+        
+        .stat-card {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: #a8d5a1;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            font-weight: 700;
+        }
+        
+        .chart-container {
+            margin-top: 15px;
+            height: 200px;
+        }
+        
+        /* Notes Section */
+        .notes-section {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+        }
+        
+        .notes-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .notes-list {
+            list-style: none;
+        }
+        
+        .note-item {
+            background: #fffef0;
+            padding: 12px;
+            margin-bottom: 10px;
+            border-radius: 6px;
+            border-left: 4px solid #a8d5a1;
+            position: relative;
+        }
+        
+        .note-date {
+            font-size: 11px;
+            color: #999;
+            margin-bottom: 6px;
+        }
+        
+        .note-text {
+            font-size: 13px;
+            color: #333;
+            line-height: 1.4;
+            word-break: break-word;
+        }
+        
+        .note-delete {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #ff6b6b;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 4px 8px;
+            font-size: 11px;
+            cursor: pointer;
+            font-weight: 700;
+        }
+        
+        /* Weekly Goals Section */
+        .weekly-goals-section {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+            margin-top: 20px;
+        }
+        
+        .weekly-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+        
+        .weekly-sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .weekly-circle-card {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .weekly-circle-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: #666;
+            margin-bottom: 15px;
+        }
+        
+        .weekly-goal-card {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 8px;
+        }
+        
+        .weekly-goal-title {
+            font-size: 11px;
+            font-weight: 700;
+            color: #666;
+            margin-bottom: 10px;
+        }
+        
+        .weekly-goal-text {
+            font-size: 14px;
+            color: #333;
+            min-height: 40px;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+        
+        .weekly-goal-text:hover {
+            background: rgba(168, 213, 161, 0.1);
+        }
+        
+        .weekly-goal-input {
+            width: 100%;
+            padding: 8px;
+            font-size: 14px;
+            border: 2px solid #a8d5a1;
+            border-radius: 4px;
+            font-family: 'Lato', sans-serif;
+        }
+        
+        .weekly-columns {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 15px;
+        }
+        
+        .week-column {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 8px;
+        }
+        
+        .week-header {
+            font-size: 13px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 5px;
+            text-align: center;
+        }
+        
+        .week-subheader {
+            font-size: 11px;
+            color: #666;
+            text-align: center;
+            margin-bottom: 15px;
+            line-height: 1.3;
+        }
+        
+        .week-circle-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 15px;
+        }
+        
+        .week-tasks {
+            margin-bottom: 10px;
+        }
+        
+        .week-task {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+            padding: 8px;
+            background: white;
+            border-radius: 4px;
+        }
+        
+        .task-checkbox {
+            width: 18px;
+            height: 18px;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+        
+        .task-checkbox.checked {
+            background: #a8d5a1;
+            border-color: #a8d5a1;
+        }
+        
+        .task-text {
+            flex: 1;
+            font-size: 13px;
+            color: #333;
+            cursor: pointer;
+            word-break: break-word;
+        }
+        
+        .task-input {
+            flex: 1;
+            padding: 4px 8px;
+            font-size: 13px;
+            border: 1px solid #a8d5a1;
+            border-radius: 4px;
+            font-family: 'Lato', sans-serif;
+        }
+        
+        .task-delete {
+            color: #ff6b6b;
+            font-size: 20px;
+            cursor: pointer;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+        
+        .add-task-btn {
+            width: 100%;
+            padding: 10px;
+            background: white;
+            border: 2px dashed #ddd;
+            border-radius: 6px;
+            color: #666;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            font-family: 'Lato', sans-serif;
+        }
+        
+        .add-task-btn:hover {
+            border-color: #a8d5a1;
+            color: #a8d5a1;
+        }
+
+        /* Tablet responsiveness */
+        @media (min-width: 600px) {
+            body {
+                padding: 20px;
+            }
+            
+            .container {
+                padding: 30px;
+            }
+            
+            .app-title {
+                font-size: 26px;
+            }
+            
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .calendar-day-header {
+                font-size: 12px;
+            }
+            
+            .calendar-day {
+                font-size: 13px;
+            }
+        }
+
+        /* Desktop responsiveness */
+        @media (min-width: 900px) {
+            .container {
+                padding: 40px;
+            }
+            
+            .app-title {
+                font-size: 28px;
+            }
+            
+            .grid {
+                grid-template-columns: 0.85fr 2.8fr 0.65fr;
+            }
+            
+            .grid-2col {
+                grid-template-columns: 0.8fr 2fr 0.8fr;
+            }
+            
+            .bottom-compact-left {
+                max-width: 280px;
+            }
+            
+            .stats-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+            
+            .weekly-grid {
+                grid-template-columns: 280px 1fr;
+            }
+            
+            .weekly-columns {
+                grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            }
+        }
+
+        @media (min-width: 1200px) {
+            .weekly-columns {
+                grid-template-columns: repeat(7, 1fr);
+            }
+        }
+
+        /* Print styles */
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+            
+            .container {
+                box-shadow: none;
+                padding: 20px;
+            }
+            
+            .control-buttons,
+            .habit-delete,
+            .note-delete,
+            .task-delete,
+            .add-habit-btn,
+            .add-task-btn {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        const HabitTracker = () => {
+            const [currentDate, setCurrentDate] = useState(new Date());
+            const [selectedDate, setSelectedDate] = useState(new Date());
+            const [habits, setHabits] = useState([]);
+            const [habitCompletions, setHabitCompletions] = useState({});
+            const [showAddModal, setShowAddModal] = useState(false);
+            const [newHabitName, setNewHabitName] = useState('');
+            const [notes, setNotes] = useState([]);
+            const [monthlyGoal, setMonthlyGoal] = useState('');
+            const [isEditingGoal, setIsEditingGoal] = useState(false);
+            const [weeklyTasks, setWeeklyTasks] = useState({
+                monday: [],
+                tuesday: [],
+                wednesday: [],
+                thursday: [],
+                friday: [],
+                saturday: [],
+                sunday: []
+            });
+            const [editingTask, setEditingTask] = useState({ week: null, index: null });
+            const [editTaskValue, setEditTaskValue] = useState('');
+            const chartRef = useRef(null);
+            const chartInstance = useRef(null);
+
+            // Load data from localStorage
+            useEffect(() => {
+                const savedHabits = localStorage.getItem('habits');
+                const savedCompletions = localStorage.getItem('habitCompletions');
+                const savedNotes = localStorage.getItem('notes');
+                const savedGoal = localStorage.getItem('monthlyGoal');
+                const savedWeeklyTasks = localStorage.getItem('weeklyTasks');
+
+                if (savedHabits) setHabits(JSON.parse(savedHabits));
+                if (savedCompletions) setHabitCompletions(JSON.parse(savedCompletions));
+                if (savedNotes) setNotes(JSON.parse(savedNotes));
+                if (savedGoal) setMonthlyGoal(savedGoal);
+                if (savedWeeklyTasks) setWeeklyTasks(JSON.parse(savedWeeklyTasks));
+            }, []);
+
+            // Save to localStorage whenever data changes
+            useEffect(() => {
+                localStorage.setItem('habits', JSON.stringify(habits));
+            }, [habits]);
+
+            useEffect(() => {
+                localStorage.setItem('habitCompletions', JSON.stringify(habitCompletions));
+            }, [habitCompletions]);
+
+            useEffect(() => {
+                localStorage.setItem('notes', JSON.stringify(notes));
+            }, [notes]);
+
+            useEffect(() => {
+                localStorage.setItem('monthlyGoal', monthlyGoal);
+            }, [monthlyGoal]);
+
+            useEffect(() => {
+                localStorage.setItem('weeklyTasks', JSON.stringify(weeklyTasks));
+            }, [weeklyTasks]);
+
+            // Chart update
+            useEffect(() => {
+                if (chartRef.current) {
+                    const ctx = chartRef.current.getContext('2d');
+                    
+                    if (chartInstance.current) {
+                        chartInstance.current.destroy();
+                    }
+
+                    const last7Days = Array.from({length: 7}, (_, i) => {
+                        const d = new Date();
+                        d.setDate(d.getDate() - (6 - i));
+                        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                    });
+
+                    const completionData = last7Days.map((_, i) => {
+                        const d = new Date();
+                        d.setDate(d.getDate() - (6 - i));
+                        const dateKey = d.toDateString();
+                        const completed = habitCompletions[dateKey]?.length || 0;
+                        const total = habits.length || 1;
+                        return Math.round((completed / total) * 100);
+                    });
+
+                    chartInstance.current = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: last7Days,
+                            datasets: [{
+                                label: 'Completion %',
+                                data: completionData,
+                                borderColor: '#a8d5a1',
+                                backgroundColor: 'rgba(168, 213, 161, 0.1)',
+                                tension: 0.4,
+                                fill: true
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { display: false }
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    max: 100,
+                                    ticks: {
+                                        callback: function(value) {
+                                            return value + '%';
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+
+                return () => {
+                    if (chartInstance.current) {
+                        chartInstance.current.destroy();
+                    }
+                };
+            }, [habits, habitCompletions]);
+
+            const addHabit = () => {
+                if (newHabitName.trim()) {
+                    setHabits([...habits, { id: Date.now(), name: newHabitName }]);
+                    setNewHabitName('');
+                    setShowAddModal(false);
+                }
+            };
+
+            const deleteHabit = (habitId) => {
+                setHabits(habits.filter(h => h.id !== habitId));
+                const newCompletions = { ...habitCompletions };
+                Object.keys(newCompletions).forEach(date => {
+                    newCompletions[date] = newCompletions[date].filter(id => id !== habitId);
+                });
+                setHabitCompletions(newCompletions);
+            };
+
+            const toggleHabit = (habitId) => {
+                const dateKey = selectedDate.toDateString();
+                const currentCompletions = habitCompletions[dateKey] || [];
+                
+                if (currentCompletions.includes(habitId)) {
+                    setHabitCompletions({
+                        ...habitCompletions,
+                        [dateKey]: currentCompletions.filter(id => id !== habitId)
+                    });
+                } else {
+                    setHabitCompletions({
+                        ...habitCompletions,
+                        [dateKey]: [...currentCompletions, habitId]
+                    });
+                }
+            };
+
+            const addNote = () => {
+                const noteText = prompt('Enter your note:');
+                if (noteText && noteText.trim()) {
+                    setNotes([
+                        { id: Date.now(), text: noteText, date: selectedDate.toDateString() },
+                        ...notes
+                    ]);
+                }
+            };
+
+            const deleteNote = (noteId) => {
+                setNotes(notes.filter(n => n.id !== noteId));
+            };
+
+            const resetAll = () => {
+                if (confirm('Are you sure you want to reset all data? This cannot be undone.')) {
+                    setHabits([]);
+                    setHabitCompletions({});
+                    setNotes([]);
+                    setMonthlyGoal('');
+                    setWeeklyTasks({
+                        monday: [],
+                        tuesday: [],
+                        wednesday: [],
+                        thursday: [],
+                        friday: [],
+                        saturday: [],
+                        sunday: []
+                    });
+                    localStorage.clear();
+                }
+            };
+
+            const addWeeklyTask = (day) => {
+                const taskText = prompt(`Add task for ${day}:`);
+                if (taskText && taskText.trim()) {
+                    setWeeklyTasks({
+                        ...weeklyTasks,
+                        [day]: [...weeklyTasks[day], { text: taskText, checked: false }]
+                    });
+                }
+            };
+
+            const toggleWeeklyTask = (day, taskIndex) => {
+                const newTasks = [...weeklyTasks[day]];
+                newTasks[taskIndex].checked = !newTasks[taskIndex].checked;
+                setWeeklyTasks({
+                    ...weeklyTasks,
+                    [day]: newTasks
+                });
+            };
+
+            const deleteWeeklyTask = (day, taskIndex) => {
+                setWeeklyTasks({
+                    ...weeklyTasks,
+                    [day]: weeklyTasks[day].filter((_, i) => i !== taskIndex)
+                });
+            };
+
+            const startEditingTask = (day, taskIndex, text) => {
+                setEditingTask({ week: day, index: taskIndex });
+                setEditTaskValue(text);
+            };
+
+            const saveTaskEdit = () => {
+                if (editTaskValue.trim() && editingTask.week !== null) {
+                    const newTasks = [...weeklyTasks[editingTask.week]];
+                    newTasks[editingTask.index].text = editTaskValue;
+                    setWeeklyTasks({
+                        ...weeklyTasks,
+                        [editingTask.week]: newTasks
+                    });
+                }
+                setEditingTask({ week: null, index: null });
+                setEditTaskValue('');
+            };
+
+            const getWeeklyCompletion = (day) => {
+                const tasks = weeklyTasks[day];
+                if (tasks.length === 0) return 0;
+                const completed = tasks.filter(t => t.checked).length;
+                return Math.round((completed / tasks.length) * 100);
+            };
+
+            const getOverallWeeklyCompletion = () => {
+                const allTasks = Object.values(weeklyTasks).flat();
+                if (allTasks.length === 0) return 0;
+                const completed = allTasks.filter(t => t.checked).length;
+                return Math.round((completed / allTasks.length) * 100);
+            };
+
+            const getDaysInMonth = (date) => {
+                const year = date.getFullYear();
+                const month = date.getMonth();
+                const firstDay = new Date(year, month, 1);
+                const lastDay = new Date(year, month + 1, 0);
+                const daysInMonth = lastDay.getDate();
+                const startingDayOfWeek = firstDay.getDay();
+                
+                return { daysInMonth, startingDayOfWeek };
+            };
+
+            const changeMonth = (delta) => {
+                const newDate = new Date(currentDate);
+                newDate.setMonth(newDate.getMonth() + delta);
+                setCurrentDate(newDate);
+            };
+
+            const currentMonth = currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+            const { daysInMonth, startingDayOfWeek } = getDaysInMonth(currentDate);
+
+            const getTodayStats = () => {
+                const today = new Date().toDateString();
+                const completed = (habitCompletions[today] || []).length;
+                const total = habits.length;
+                const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
+                return { completed, total, percentage };
+            };
+
+            const getCurrentStreak = () => {
+                let streak = 0;
+                const today = new Date();
+                
+                for (let i = 0; i < 365; i++) {
+                    const date = new Date(today);
+                    date.setDate(date.getDate() - i);
+                    const dateKey = date.toDateString();
+                    const completed = (habitCompletions[dateKey] || []).length;
+                    const total = habits.length;
+                    
+                    if (total > 0 && completed === total) {
+                        streak++;
+                    } else {
+                        break;
+                    }
+                }
+                
+                return streak;
+            };
+
+            const todayStats = getTodayStats();
+            const currentStreak = getCurrentStreak();
+
+            return (
+                <div className="container">
+                    <div className="top-controls">
+                        <div className="app-title">Habit Tracker</div>
+                        <div className="control-buttons">
+                            <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>
+                                + Add Habit
+                            </button>
+                            <button className="btn btn-secondary" onClick={addNote}>
+                                + Add Note
+                            </button>
+                            <button className="btn btn-danger" onClick={resetAll}>
+                                Reset All
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="grid">
+                        {/* Calendar Section */}
+                        <div className="calendar-section">
+                            <h2 className="section-title">Calendar</h2>
+                            <div className="calendar">
+                                <div className="calendar-header">
+                                    <button className="calendar-nav" onClick={() => changeMonth(-1)}>‹</button>
+                                    <span className="month-name">{currentMonth}</span>
+                                    <button className="calendar-nav" onClick={() => changeMonth(1)}>›</button>
+                                </div>
+                                <div className="calendar-grid">
+                                    {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, i) => (
+                                        <div key={i} className="calendar-day-header">{day}</div>
+                                    ))}
+                                    {Array.from({ length: startingDayOfWeek }, (_, i) => (
+                                        <div key={`empty-${i}`} className="calendar-day empty"></div>
+                                    ))}
+                                    {Array.from({ length: daysInMonth }, (_, i) => {
+                                        const day = i + 1;
+                                        const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
+                                        const dateKey = date.toDateString();
+                                        const isSelected = date.toDateString() === selectedDate.toDateString();
+                                        const hasHabits = habitCompletions[dateKey] && habitCompletions[dateKey].length > 0;
+                                        
+                                        return (
+                                            <div
+                                                key={day}
+                                                className={`calendar-day ${isSelected ? 'selected' : ''}`}
+                                                onClick={() => setSelectedDate(date)}
+                                            >
+                                                {day}
+                                                {hasHabits && <div className="habit-dot"></div>}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Habits Section */}
+                        <div className="habits-section">
+                            <h2 className="section-title">
+                                Habits for {selectedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                            </h2>
+                            {habits.length === 0 ? (
+                                <p style={{textAlign: 'center', color: '#999', padding: '20px'}}>
+                                    No habits yet. Add your first habit to get started!
+                                </p>
+                            ) : (
+                                <ul className="habits-list">
+                                    {habits.map(habit => {
+                                        const dateKey = selectedDate.toDateString();
+                                        const isCompleted = (habitCompletions[dateKey] || []).includes(habit.id);
+                                        
+                                        return (
+                                            <li key={habit.id} className="habit-item">
+                                                <div className="habit-left">
+                                                    <div 
+                                                        className={`habit-checkbox ${isCompleted ? 'checked' : ''}`}
+                                                        onClick={() => toggleHabit(habit.id)}
+                                                    >
+                                                        {isCompleted && (
+                                                            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                                                                <path d="M2 7L6 11L12 3" stroke="white" strokeWidth="2" strokeLinecap="round" />
+                                                            </svg>
+                                                        )}
+                                                    </div>
+                                                    <span className="habit-name">{habit.name}</span>
+                                                </div>
+                                                <div className="habit-actions">
+                                                    <button 
+                                                        className="habit-delete"
+                                                        onClick={() => deleteHabit(habit.id)}
+                                                    >
+                                                        Delete
+                                                    </button>
+                                                </div>
+                                            </li>
+                                        );
+                                    })}
+                                </ul>
+                            )}
+                        </div>
+
+                        {/* Stats Section */}
+                        <div className="stats-section">
+                            <h2 className="section-title">Stats</h2>
+                            <div className="stats-grid">
+                                <div className="stat-card">
+                                    <div className="stat-value">{todayStats.percentage}%</div>
+                                    <div className="stat-label">TODAY</div>
+                                </div>
+                                <div className="stat-card">
+                                    <div className="stat-value">{currentStreak}</div>
+                                    <div className="stat-label">STREAK</div>
+                                </div>
+                                <div className="stat-card">
+                                    <div className="stat-value">{habits.length}</div>
+                                    <div className="stat-label">HABITS</div>
+                                </div>
+                            </div>
+                            <div className="chart-container">
+                                <canvas ref={chartRef}></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="grid-2col">
+                        <div className="bottom-compact-left">
+                            <div className="notes-section">
+                                <div className="notes-header">
+                                    <h2 className="section-title">Notes</h2>
+                                </div>
+                                <ul className="notes-list">
+                                    {notes.slice(0, 5).map(note => (
+                                        <li key={note.id} className="note-item">
+                                            <div className="note-date">
+                                                {new Date(note.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                            </div>
+                                            <div className="note-text">{note.text}</div>
+                                            <button 
+                                                className="note-delete"
+                                                onClick={() => deleteNote(note.id)}
+                                            >
+                                                Delete
+                                            </button>
+                                        </li>
+                                    ))
+                                }
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Daily Goals Section */}
+                    <div className="weekly-goals-section">
+                        <h2 className="section-title">Daily Goals</h2>
+
+                        <div className="weekly-grid">
+                            <div className="weekly-sidebar">
+                                <div className="weekly-circle-card">
+                                    <div className="weekly-circle-title">DAILY TASKS</div>
+                                    <svg className="progress-ring" viewBox="0 0 120 120" style={{width: '140px', height: '140px'}}>
+                                        <circle cx="60" cy="60" r="50" fill="none" stroke="#f0f0f0" strokeWidth="12" />
+                                        <circle
+                                            cx="60" cy="60" r="50" fill="none" stroke="#a8d5a1" strokeWidth="12"
+                                            strokeLinecap="round"
+                                            strokeDasharray={`${2 * Math.PI * 50}`}
+                                            strokeDashoffset={`${2 * Math.PI * 50 * (1 - getOverallWeeklyCompletion() / 100)}`}
+                                            transform="rotate(-90 60 60)"
+                                            style={{transition: 'stroke-dashoffset 0.5s ease'}}
+                                        />
+                                        <text x="60" y="65" textAnchor="middle" fontSize="28" fontWeight="700" fill="#333">
+                                            {getOverallWeeklyCompletion()}%
+                                        </text>
+                                    </svg>
+                                </div>
+                                <div className="weekly-goal-card">
+                                    <div className="weekly-goal-title">{currentMonth.toUpperCase()} GOAL</div>
+                                    {isEditingGoal ? (
+                                        <input
+                                            type="text"
+                                            className="weekly-goal-input"
+                                            value={monthlyGoal}
+                                            onChange={(e) => setMonthlyGoal(e.target.value)}
+                                            onBlur={() => setIsEditingGoal(false)}
+                                            onKeyPress={(e) => e.key === 'Enter' && setIsEditingGoal(false)}
+                                            autoFocus
+                                        />
+                                    ) : (
+                                        <div 
+                                            className="weekly-goal-text"
+                                            onClick={() => setIsEditingGoal(true)}
+                                        >
+                                            {monthlyGoal || 'Click to set your goal'}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="weekly-columns">
+                                {[
+                                    { key: 'monday', label: 'MONDAY' },
+                                    { key: 'tuesday', label: 'TUESDAY' },
+                                    { key: 'wednesday', label: 'WEDNESDAY' },
+                                    { key: 'thursday', label: 'THURSDAY' },
+                                    { key: 'friday', label: 'FRIDAY' },
+                                    { key: 'saturday', label: 'SATURDAY' },
+                                    { key: 'sunday', label: 'SUNDAY' }
+                                ].map((day) => (
+                                    <div key={day.key} className="week-column">
+                                        <div className="week-header">
+                                            {day.label}
+                                        </div>
+                                        <div className="week-subheader">
+                                            COMPLETED<br />
+                                            {weeklyTasks[day.key].filter(t => t.checked).length} / {weeklyTasks[day.key].length}
+                                        </div>
+                                        <div className="week-circle-container">
+                                            <svg viewBox="0 0 80 80" style={{width: '80px', height: '80px'}}>
+                                                <circle cx="40" cy="40" r="32" fill="none" stroke="#f0f0f0" strokeWidth="8" />
+                                                <circle
+                                                    cx="40" cy="40" r="32" fill="none" 
+                                                    stroke="#a8d5a1"
+                                                    strokeWidth="8"
+                                                    strokeLinecap="round"
+                                                    strokeDasharray={`${2 * Math.PI * 32}`}
+                                                    strokeDashoffset={`${2 * Math.PI * 32 * (1 - getWeeklyCompletion(day.key) / 100)}`}
+                                                    transform="rotate(-90 40 40)"
+                                                    style={{transition: 'stroke-dashoffset 0.5s ease'}}
+                                                />
+                                                <text x="40" y="46" textAnchor="middle" fontSize="18" fontWeight="700" fill="#333">
+                                                    {getWeeklyCompletion(day.key)}%
+                                                </text>
+                                            </svg>
+                                        </div>
+                                        <div className="week-tasks">
+                                            {weeklyTasks[day.key].map((task, taskIdx) => (
+                                                <div key={taskIdx} className="week-task">
+                                                    <div 
+                                                        className={`task-checkbox ${task.checked ? 'checked' : ''}`}
+                                                        onClick={() => toggleWeeklyTask(day.key, taskIdx)}
+                                                    >
+                                                        {task.checked && (
+                                                            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                                                                <path d="M2 6L5 9L10 3" stroke="white" strokeWidth="2" strokeLinecap="round" />
+                                                            </svg>
+                                                        )}
+                                                    </div>
+                                                    {editingTask.week === day.key && editingTask.index === taskIdx ? (
+                                                        <input
+                                                            type="text"
+                                                            className="task-input"
+                                                            value={editTaskValue}
+                                                            onChange={(e) => setEditTaskValue(e.target.value)}
+                                                            onBlur={saveTaskEdit}
+                                                            onKeyPress={(e) => e.key === 'Enter' && saveTaskEdit()}
+                                                            autoFocus
+                                                        />
+                                                    ) : (
+                                                        <span 
+                                                            className="task-text"
+                                                            onClick={() => startEditingTask(day.key, taskIdx, task.text)}
+                                                        >
+                                                            {task.text}
+                                                        </span>
+                                                    )}
+                                                    <span 
+                                                        className="task-delete"
+                                                        onClick={() => deleteWeeklyTask(day.key, taskIdx)}
+                                                    >
+                                                        ×
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <button 
+                                            className="add-task-btn"
+                                            onClick={() => addWeeklyTask(day.key)}
+                                        >
+                                            + Add Task
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {/* Add Habit Modal */}
+                    {showAddModal && (
+                        <div className="modal-overlay" onClick={() => setShowAddModal(false)}>
+                            <div className="modal" onClick={(e) => e.stopPropagation()}>
+                                <div className="modal-header">Add New Habit</div>
+                                <div className="form-group">
+                                    <label className="form-label">Habit Name</label>
+                                    <input
+                                        type="text"
+                                        className="form-input"
+                                        placeholder="e.g., Exercise 30 minutes"
+                                        value={newHabitName}
+                                        onChange={(e) => setNewHabitName(e.target.value)}
+                                        onKeyPress={(e) => e.key === 'Enter' && addHabit()}
+                                        autoFocus
+                                    />
+                                </div>
+                                <div className="modal-actions">
+                                    <button className="btn btn-secondary" onClick={() => setShowAddModal(false)}>
+                                        Cancel
+                                    </button>
+                                    <button className="btn btn-primary" onClick={addHabit}>
+                                        Add Habit
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        ReactDOM.render(<HabitTracker />, document.getElementById('root'));
+    </script>
+</body>
+</html>
