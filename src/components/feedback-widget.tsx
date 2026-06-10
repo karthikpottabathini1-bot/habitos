@@ -4,77 +4,58 @@ import { useState } from 'react';
 
 const LUMIN_URL = 'https://lumin-dun.vercel.app';
 
-const FOLLOW_UPS: Record<string, { q: string; responses: string[] }[]> = {
-  default: [
-    { q: "Great idea! Can you describe what problem this solves for you?", responses: [] },
-    { q: "How would you like this to look or work? Any examples?", responses: [] },
-    { q: "On a scale of 1-10, how important is this to you?", responses: ["1-3: Nice to have", "4-6: Would use often", "7-8: Pretty important", "9-10: Dealbreaker"] },
-  ],
-};
-
-function getFollowUps(title: string) {
-  const lower = title.toLowerCase();
-  const qs = [...FOLLOW_UPS.default];
-
-  if (lower.includes('dark') || lower.includes('theme') || lower.includes('color') || lower.includes('mode')) {
-    qs.splice(1, 1, { q: "Which parts should change? (background, text, buttons, all of it?)", responses: ["Background only", "Everything", "Just text areas", "Not sure"] });
-  }
-  if (lower.includes('export') || lower.includes('csv') || lower.includes('download')) {
-    qs.splice(1, 1, { q: "What format? CSV, JSON, or PDF?", responses: ["CSV", "JSON", "PDF", "All three"] });
-  }
-  if (lower.includes('streak') || lower.includes('badge') || lower.includes('achievement')) {
-    qs.splice(1, 1, { q: "What kind? Streak milestones, level badges, or both?", responses: ["Streak milestones", "Level badges", "Both!", "Not sure"] });
-  }
-  if (lower.includes('widget') || lower.includes('ios') || lower.includes('mobile')) {
-    qs.splice(1, 1, { q: "Which platform? iOS, Android, or both?", responses: ["iOS", "Android", "Both", "Web widget"] });
-  }
-  if (lower.includes('remind') || lower.includes('notification') || lower.includes('alert')) {
-    qs.splice(1, 1, { q: "When should reminders happen? Morning, evening, or custom?", responses: ["Morning", "Evening", "Custom time", "Both morning and evening"] });
-  }
-
-  return qs;
-}
-
 export default function FeedbackWidget() {
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<'start' | 'chat' | 'done'>('start');
   const [title, setTitle] = useState('');
-  const [currentQ, setCurrentQ] = useState(0);
   const [answers, setAnswers] = useState<string[]>([]);
+  const [currentQuestion, setCurrentQuestion] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
   const [requestId, setRequestId] = useState('');
   const [sending, setSending] = useState(false);
+  const [customInput, setCustomInput] = useState('');
 
-  const questions = title ? getFollowUps(title) : FOLLOW_UPS.default;
+  const loadNextQuestion = async (newAnswers: string[]) => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${LUMIN_URL}/api/ai/follow-up`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ request: title, answers: newAnswers }),
+      });
+      const data = await res.json();
+      if (data.done || !data.question) {
+        submitRequest(newAnswers);
+      } else {
+        setCurrentQuestion(data.question);
+      }
+    } catch {
+      submitRequest(newAnswers);
+    }
+    setLoading(false);
+  };
 
   const handleStart = () => {
     if (!title.trim()) return;
     setStep('chat');
-    setCurrentQ(0);
     setAnswers([]);
+    loadNextQuestion([]);
   };
 
-  const handleAnswer = (answer: string) => {
-    const newAnswers = [...answers, answer];
+  const handleAnswer = (answer?: string) => {
+    const a = answer || customInput.trim();
+    if (!a) return;
+    setCustomInput('');
+    const newAnswers = [...answers, a];
     setAnswers(newAnswers);
-
-    if (currentQ + 1 < questions.length) {
-      setCurrentQ(currentQ + 1);
-    } else {
-      submitRequest(newAnswers);
-    }
-  };
-
-  const handleCustomAnswer = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      const val = (e.target as HTMLInputElement).value.trim();
-      if (val) handleAnswer(val);
-    }
+    setCurrentQuestion('Thinking...');
+    loadNextQuestion(newAnswers);
   };
 
   const submitRequest = async (allAnswers: string[]) => {
     setSending(true);
     try {
-      const details = allAnswers.map((a, i) => `${questions[i].q}\n→ ${a}`).join('\n\n');
+      const details = allAnswers.map((a, i) => `Q${i + 1}: ${a}`).join('\n');
 
       const res = await fetch(`${LUMIN_URL}/api/features`, {
         method: 'POST',
@@ -91,7 +72,7 @@ export default function FeedbackWidget() {
       setRequestId(data.id || 'sent');
       setStep('done');
     } catch {
-      alert('Failed to send. Check your connection.');
+      alert('Failed to send.');
     }
     setSending(false);
   };
@@ -99,9 +80,10 @@ export default function FeedbackWidget() {
   const reset = () => {
     setStep('start');
     setTitle('');
-    setCurrentQ(0);
     setAnswers([]);
+    setCurrentQuestion(null);
     setRequestId('');
+    setCustomInput('');
     setOpen(false);
   };
 
@@ -109,7 +91,6 @@ export default function FeedbackWidget() {
     <>
       {open && (
         <div className="fixed bottom-20 right-6 w-80 z-50 bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
-          {/* Header */}
           <div className="bg-gradient-to-r from-emerald-500 to-teal-500 p-4 text-white">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-semibold">Request a Feature</h3>
@@ -120,14 +101,11 @@ export default function FeedbackWidget() {
             <p className="text-xs text-white/70 mt-1">Your feedback goes directly to the team</p>
           </div>
 
-          {/* Body */}
           <div className="p-4 min-h-[300px] max-h-[400px] overflow-y-auto">
             {step === 'start' && (
               <div className="space-y-4 pt-2">
                 <div className="flex gap-2">
-                  <div className="w-7 h-7 rounded-full bg-emerald-100 flex items-center justify-center text-xs flex-shrink-0">
-                    💡
-                  </div>
+                  <div className="w-7 h-7 rounded-full bg-emerald-100 flex items-center justify-center text-xs flex-shrink-0">💡</div>
                   <p className="text-sm text-gray-600 bg-gray-50 rounded-2xl rounded-tl-sm p-3">
                     What feature would you like to see in HabitOS?
                   </p>
@@ -151,64 +129,55 @@ export default function FeedbackWidget() {
               </div>
             )}
 
-            {step === 'chat' && currentQ < questions.length && (
+            {step === 'chat' && (
               <div className="space-y-4 pt-2">
-                {/* Previous Q&A */}
-                {answers.map((a, i) => (
-                  <div key={i}>
-                    <div className="flex gap-2 mb-2">
-                      <div className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-xs flex-shrink-0">
-                        🤖
-                      </div>
-                      <p className="text-sm text-gray-600 bg-gray-50 rounded-2xl rounded-tl-sm p-3">
-                        {questions[i].q}
-                      </p>
-                    </div>
-                    <div className="flex justify-end mb-2">
-                      <p className="text-sm text-white bg-emerald-500 rounded-2xl rounded-tr-sm p-3 max-w-[80%]">
-                        {a}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-
-                {/* Current question */}
                 <div className="flex gap-2">
-                  <div className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-xs flex-shrink-0">
-                    🤖
-                  </div>
-                  <p className="text-sm text-gray-600 bg-gray-50 rounded-2xl rounded-tl-sm p-3">
-                    {questions[currentQ].q}
+                  <div className="w-7 h-7 rounded-full bg-emerald-100 flex items-center justify-center text-xs flex-shrink-0">💡</div>
+                  <p className="text-sm text-gray-600 bg-gray-50 rounded-2xl rounded-tl-sm p-3 font-medium">
+                    {title}
                   </p>
                 </div>
 
-                {/* Response options */}
-                <div className="space-y-1.5 pl-9">
-                  {questions[currentQ].responses.length > 0 ? (
-                    questions[currentQ].responses.map((r) => (
+                {answers.map((a, i) => (
+                  <div key={i} className="flex justify-end">
+                    <p className="text-sm text-white bg-emerald-500 rounded-2xl rounded-tr-sm p-3 max-w-[80%]">{a}</p>
+                  </div>
+                ))}
+
+                {loading ? (
+                  <div className="flex gap-2">
+                    <div className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-xs flex-shrink-0">🤖</div>
+                    <p className="text-sm text-gray-400 italic bg-gray-50 rounded-2xl rounded-tl-sm p-3">Thinking...</p>
+                  </div>
+                ) : currentQuestion ? (
+                  <>
+                    <div className="flex gap-2">
+                      <div className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-xs flex-shrink-0">🤖</div>
+                      <p className="text-sm text-gray-600 bg-gray-50 rounded-2xl rounded-tl-sm p-3">{currentQuestion}</p>
+                    </div>
+                    <div className="flex gap-2 pl-9">
+                      <input
+                        type="text"
+                        value={customInput}
+                        onChange={(e) => setCustomInput(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') handleAnswer(); }}
+                        placeholder="Type your answer..."
+                        className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-700 outline-none focus:border-emerald-300"
+                        autoFocus
+                      />
                       <button
-                        key={r}
-                        onClick={() => handleAnswer(r)}
-                        className="w-full text-left px-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 hover:border-emerald-300 hover:text-emerald-700 transition-colors cursor-pointer"
+                        onClick={() => handleAnswer()}
+                        disabled={!customInput.trim()}
+                        className="px-4 py-2.5 rounded-xl bg-emerald-500 text-white text-sm font-medium hover:bg-emerald-600 disabled:opacity-40 transition-colors cursor-pointer"
                       >
-                        {r}
+                        Send
                       </button>
-                    ))
-                  ) : (
-                    <input
-                      type="text"
-                      placeholder="Type your answer..."
-                      onKeyDown={handleCustomAnswer}
-                      className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-700 outline-none focus:border-emerald-300"
-                      autoFocus
-                    />
-                  )}
-                </div>
+                    </div>
+                  </>
+                ) : null}
 
                 {sending && (
-                  <div className="text-center text-sm text-gray-400 py-2">
-                    Sending your request...
-                  </div>
+                  <p className="text-center text-sm text-gray-400 py-2">Sending your request to Lumin...</p>
                 )}
               </div>
             )}
@@ -220,16 +189,10 @@ export default function FeedbackWidget() {
                     <polyline points="20 6 9 17 4 12" />
                   </svg>
                 </div>
-                <div>
-                  <p className="text-base font-semibold text-gray-900">Request Sent!</p>
-                  <p className="text-sm text-gray-500 mt-1">Your feature request is in review.</p>
-                  <p className="text-xs text-gray-400 mt-2">ID: {requestId}</p>
-                </div>
-                <p className="text-xs text-gray-400">The team will review it and respond soon.</p>
-                <button
-                  onClick={reset}
-                  className="px-5 py-2 rounded-xl bg-emerald-500 text-white text-sm font-medium hover:bg-emerald-600 transition-colors cursor-pointer"
-                >
+                <p className="text-base font-semibold text-gray-900">Request Sent!</p>
+                <p className="text-sm text-gray-500">The team will review it soon.</p>
+                <p className="text-xs text-gray-400">ID: {requestId}</p>
+                <button onClick={reset} className="px-5 py-2 rounded-xl bg-emerald-500 text-white text-sm font-medium hover:bg-emerald-600 transition-colors cursor-pointer">
                   Done
                 </button>
               </div>
